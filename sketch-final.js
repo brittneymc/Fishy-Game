@@ -57,11 +57,11 @@ function preload() {
 }
 
 //---- REQUIRED TO PLAY AUDIO
-/*document.querySelector('button').addEventListener('click', function() {
+document.querySelector('button').addEventListener('click', function() {
   context.resume().then(() => {
     console.log('Playback resumed successfully');
   });
-}); */
+});
 
 //---- SETUP
 function setup() {
