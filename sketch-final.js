@@ -30,6 +30,7 @@ var b1, b2, c1, c2; // defined below
 
 //----  SOUNDS
 var collectsound; // sound when colect coin
+var collectjewel; // sound when colect diamond
 var zappy; // sound on death 
 var delay; // to delay zapp sound
 var pool; // underwater pool
@@ -48,15 +49,24 @@ function preload() {
   bubbles2 = loadImage("assets/bubbles2.png"); 
   heart = loadImage("assets/Life.png")
   //--- mp3 files
+  soundFormats('ogg', 'mp3', 'wav');
   zappy = loadSound("sounds/electric.wav");
   pool = loadSound("sounds/pool.wav");  
+  collectjewel = loadSound("sounds/ching.wav");
   collectsound = loadSound("sounds/coins.ogg"); // https://gamesounds.xyz/?dir=Kenney%27s%20Sound%20Pack/RPG%20Sounds/OGG  
 }
+
+//---- REQUIRED TO PLAY AUDIO
+/*document.querySelector('button').addEventListener('click', function() {
+  context.resume().then(() => {
+    console.log('Playback resumed successfully');
+  });
+}); */
 
 //---- SETUP
 function setup() {
   createCanvas(600, 400);
-  
+
   //-- sounds
   pool.loop();
   
@@ -74,7 +84,7 @@ function setup() {
   
   // setting score + scene
   score = 0;
-  scene = -1; // -1
+  scene = 0; // defaults to start screen
   dy = -buffer;
   
   // create empty groups
@@ -85,17 +95,28 @@ function setup() {
   diamonds = new Group();
 
   // create player/ fishy
+  resetSketch();
+}
+
+//---- RESETS SKETCH
+function resetSketch(){
+  scene = 0;
+  // create player/ fishy
   fishy = createSprite(400,150);
   fishy.setDefaultCollider();
   fishy.addAnimation('swim','assets/Fishy1.png', 'assets/Fishy2.png','assets/Fishy1.png','assets/Fishy3.png');
 }
 
-//---- RESET SKETCH | Dan Shiffman taught me: https://www.youtube.com/watch?v=lm8Y8TD4CTM
-// function resetSketch() {
-//   resetSketch();  
-//   var button = createButton('RESET');
-//   button.mousePressed(resetSketch);
-// }
+//---- SWITCH BETWEEN GAME STATES
+function draw() {
+	if(scene == 0){
+    startScreen();
+  }else if(scene == 1){
+  	gameOn();
+  }else if(scene == 2){
+  	gameOver()
+  }	
+}
 
 //---- SET GRADIENT BACKGROUND
 function setGradient(x, y, w, h, b1, b2) { // function will make gradient
@@ -109,125 +130,152 @@ function setGradient(x, y, w, h, b1, b2) { // function will make gradient
     }
 }
 
-//---- DRAW TO SKETCH
-function draw() {
-  if(scene < 0){
-    // Default BG if you do not collide with enemy
-    setGradient(0, 0, windowWidth, 400, b1, b2); // setGradient(0, 0, windowWidth, 400, c1, c2, Y_AXIS); 
-    // continuously create new jellyfish every random(50,200) frames
-    if(frameCount%int(random(50,200))==0) { 
-      jx = random(0,width-buffer);
-      createJelly(jx, dy);
-    }
-    // continuously create new pink fish every random(100,150) frames
-    if(frameCount%int(random(100,150))==0) {  
-      px = random(-100,0);
-      py = random(-height, height);
-      createPinky(px, py); // pinks going to the right
-    }
-    // continuously create new pink fish every random(100,150) frames
-    if(frameCount%int(random(200,350))==0) {  
-      px = random(width,width+buffer);
-      py = random(-height, height);
-      createPinky2(px, py); // pinks going to the left
-    }
-    // generate coins for points!!!!!!!!!
-    if(frameCount%int(random(100,290))==0) {  
-      cx = random(0,width);   
-      cy = random(0,-50);
-      createCoin(cx, cy); // creating coints/fish food randomly all over screen
-    }
-    // generate diamonds for points!!!!!!!!!
-    if(frameCount%int(random(500,1000))==0) {  
-      cx = random(0,width);   
-      cy = random(-10,-100);
-      createDiamond(cx, cy); // creating coints/fish food randomly all over screen
-    }
-    // Player Movement on X-Axis
-    if(mouseX < fishy.position.x - 10) {
-      fishy.changeAnimation('swim');
-      // flip horizontally
-      fishy.mirrorX(-1);
-      // negative x velocity: move left
-      fishy.velocity.x = -2;
-    } else if(mouseX > fishy.position.x + 10) {
-      fishy.changeAnimation('swim');
-      // unflip
-      fishy.mirrorX(1);
-      fishy.velocity.x = 2;
-    } else {
-      // if close to the mouse, don't move
-      fishy.changeAnimation('swim');
-      fishy.velocity.x = 0;
-      fishy.velocity.y = 0;
-    }
-    // Player Movement on Y-Axis
-    if(mouseY < fishy.position.y) {
-      fishy.velocity.y = -2;
-    } else {
-      (mouseY > fishy.position.y) 
-      fishy.velocity.y = 2;
-    }
-    
-    //----INTERACTIONS----//
-    //fishy.bounce(pinks); // fish bounces of pink fish
-    fishy.overlap(jellies, Zap); 
-    fishy.overlap(pinks, Push); 
-    fishy.overlap(collectibles, coinCollect);
-    fishy.overlap(diamonds, jewelCollect);
-    
-    //drawing the sprites
-    image(bubbles, 0,0);
-    image(kelp1, 14, 254);
-    drawSprites();
-    image(kelp2, 254, 245);
-    
-    // just for show --shrugs
-    image(heart, 15, 15);
-    image(heart, 40, 15);
-    image(heart, 65, 15);
-    
-    // draw game UI at top of screen + draw score on top
-    image(gameUi, 209, 0);
-    fill(0);
-    textSize(40);
-    textFont("Nanum Pen Script");
-    text(score, width/2, 30);
-    
-  } else { //----GAME OVER SCENE----//
-    setGradient(0, 0, windowWidth, 400, c1, c2); 
-    image(bubbles, 0,0);
-    pool.stop();
-    textAlign(CENTER);
-    
-    fill(255);
-    textSize(36);
-    textFont("Anton");
-    text('GAME OVER', width/2, 60);
-    
-    textSize(60);
-    fill(194,251,255);
-    textFont("Nanum Pen Script");
-    text('You Got Zapped!', width/2, 150);
-    
-    fill(255);
-    noStroke();
-    textSize(32);
-    textFont("Anton");
-    text(' ' + score + ' ', width/2,200);
-    textSize(20);
-    text('score', width/2,220);
-    //text('You scored '+ score + " points!" , width/2, 150);
+//---- START SCREEN
+function startScreen(){
+  setGradient(0, 0, windowWidth, 400, b1, b2); // Default BG
+  image(bubbles, 0,0); 
+  
+  fill(255);
+  textSize(36);
+  textFont("Anton");
+  textAlign(CENTER);
+  text('WELCOME TO MY FISHY GAME', width / 2, height / 2);
+
+  textSize(16);
+  text('click to start', width / 2, height / 2 + 40);
+  //resetSketch();
+}
+
+//---- GAME ON
+function gameOn(){
+  // Default BG if you do not collide with enemy
+  setGradient(0, 0, windowWidth, 400, b1, b2); // setGradient(0, 0, windowWidth, 400, c1, c2, Y_AXIS); 
+  // continuously create new jellyfish every random(50,200) frames
+  if(frameCount%int(random(50,200))==0) { 
+    jx = random(0,width-buffer);
+    createJelly(jx, dy);
   }
+  // continuously create new pink fish every random(100,150) frames
+  if(frameCount%int(random(100,150))==0) {  
+    px = random(-100,0);
+    py = random(-height, height);
+    createPinky(px, py); // pinks going to the right
+  }
+  // continuously create new pink fish every random(100,150) frames
+  if(frameCount%int(random(200,350))==0) {  
+    px = random(width,width+buffer);
+    py = random(-height, height);
+    createPinky2(px, py); // pinks going to the left
+  }
+  // generate coins for points!!!!!!!!!
+  if(frameCount%int(random(100,290))==0) {  
+    cx = random(0,width);   
+    cy = random(0,-50);
+    createCoin(cx, cy); // creating coints/fish food randomly all over screen
+  }
+  // generate diamonds for points!!!!!!!!!
+  if(frameCount%int(random(500,1000))==0) {  
+    cx = random(0,width);   
+    cy = random(-10,-100);
+    createDiamond(cx, cy); // creating coints/fish food randomly all over screen
+  }
+  // Player Movement on X-Axis
+  if(mouseX < fishy.position.x - 10) {
+    fishy.changeAnimation('swim');
+    // flip horizontally
+    fishy.mirrorX(-1);
+    // negative x velocity: move left
+    fishy.velocity.x = -2;
+  } else if(mouseX > fishy.position.x + 10) {
+    fishy.changeAnimation('swim');
+    // unflip
+    fishy.mirrorX(1);
+    fishy.velocity.x = 2;
+  } else {
+    // if close to the mouse, don't move
+    fishy.changeAnimation('swim');
+    fishy.velocity.x = 0;
+    fishy.velocity.y = 0;
+  }
+  // Player Movement on Y-Axis
+  if(mouseY < fishy.position.y) {
+    fishy.velocity.y = -2;
+  } else {
+    (mouseY > fishy.position.y) 
+    fishy.velocity.y = 2;
+  }
+
+  //----INTERACTIONS----//
+  //fishy.bounce(pinks); // fish bounces of pink fish
+  fishy.overlap(jellies, Zap); 
+  fishy.overlap(pinks, Push); 
+  fishy.overlap(collectibles, coinCollect);
+  fishy.overlap(diamonds, jewelCollect);
+
+  //drawing the sprites
+  image(bubbles, 0,0);
+  image(kelp1, 14, 254);
+  drawSprites();
+  image(kelp2, 254, 245);
+
+  // just for show --shrugs
+  image(heart, 15, 15);
+  image(heart, 40, 15);
+  image(heart, 65, 15);
+
+  // draw game UI at top of screen + draw score on top
+  image(gameUi, 209, 0);
+  fill(0);
+  textSize(40);
+  textFont("Nanum Pen Script");
+  text(score, width/2, 30);
+}
     
+//---- GAME OVER
+function gameOver(){ //----GAME OVER SCENE----//
+  setGradient(0, 0, windowWidth, 400, c1, c2); 
+  image(bubbles, 0,0);
+  pool.pause(); // stop music
+  textAlign(CENTER);
+
+  fill(255);
+  textSize(36);
+  textFont("Anton");
+  text('GAME OVER', width/2, 60);
+
+  textSize(60);
+  fill(194,251,255);
+  textFont("Nanum Pen Script");
+  text('You Got Zapped!', width/2, 150);
+
+  fill(255);
+  noStroke();
+  textSize(32);
+  textFont("Anton");
+  text(' ' + score + ' ', width/2,200);
+  textSize(20);
+  text('score', width/2,220);
+  //text('You scored '+ score + " points!" , width/2, 150);
+  textSize(16);
+  text('click to play again', width / 2, height / 2 + 60);
 } 
+
+//---- GO BETWEEN GAME SCREENS
+function mousePressed(){
+	if(scene==0){
+  	scene = 1;
+  }else if(scene==2){
+    scene = 1;
+    score = 0;
+  }
+}
 
 //----INTERACTION FUNCTIONS----//
 function Zap(Jelly, fish) {
   fill(255);
   zappy.play();
   //console.log("YOU GOT ZAPPED!");
-  scene += 2; 
+  scene = 2; 
 }
 
 function Push(Pink, fish) { // lose coins when interacting with fat fish
@@ -246,7 +294,7 @@ function coinCollect(fishy, Coin) {
 
 function jewelCollect(fishy, Diamond) { // score multiplier x 2
   Diamond.remove();
-  collectsound.play();
+  collectjewel.play();
   score = (score + 20);
   console.log(score);  
 }
